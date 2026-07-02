@@ -1,18 +1,17 @@
-from dotenv import load_dotenv
-import os
 import json
 from copy import deepcopy
 from .utils import get_chatbot_response
-from openai import OpenAI
-load_dotenv()
+import llm_client
 
 class ClassificationAgent():
-    def __init__(self):
-        self.client = OpenAI(
-            api_key=os.getenv("RUNPOD_TOKEN"),
-            base_url=os.getenv("RUNPOD_CHATBOT_URL"),
-        )
-        self.model_name = os.getenv("MODEL_NAME")
+    def __init__(self, provider=None):
+        # dotenv/openai are only imported once an agent is actually constructed
+        # (inside llm_client.get_client), not at module import time -- keeps this
+        # module importable without either package installed.
+        from dotenv import load_dotenv
+        load_dotenv()
+        self.client, config = llm_client.get_client(provider=provider)
+        self.model_name = config["model"]
     
     def get_response(self,messages):
         messages = deepcopy(messages)

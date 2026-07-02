@@ -1,3 +1,9 @@
+# Original tutorial's standalone interactive reference script -- kept for reference,
+# not used by the production path (main.py -> AgentController, which uses the
+# single-call RouterAgent instead of GuardAgent+ClassificationAgent). Note this
+# predates the provider-agnostic llm_client.py: GuardAgent/ClassificationAgent's
+# __init__ signatures now take an optional provider= param (see agents/guard_agent.py)
+# but otherwise this script's flow is unchanged from the original tutorial.
 from agents import (GuardAgent,
                     ClassificationAgent,
                     DetailsAgent,

@@ -1,15 +1,30 @@
 
 # Coffee Shop Customer Service Chatbot 🚀☕️
 
-> **Fork note:** This is a fork of [abdullahtarek/coffee_shop_customer_service_chatbot](https://github.com/abdullahtarek/coffee_shop_customer_service_chatbot). The original multi-agent chatbot, tutorial, and app design are by **Abdullah Tarek** — full credit for the baseline. My changes are summarized below (backend) and in [`coffee_shop_app/README.md`](./coffee_shop_app/README.md) (frontend); the original documentation follows unchanged.
+> **Fork note:** This is a fork of [abdullahtarek/coffee_shop_customer_service_chatbot](https://github.com/abdullahtarek/coffee_shop_customer_service_chatbot). The original multi-agent chatbot, tutorial, and app design are by **Abdullah Tarek** — full credit for the baseline. Everything below "What I added" is mine; the original documentation follows unchanged further down.
 
-## 🛠️ What I changed (backend)
+## 🧠 What I added: you don't need my GPU to try this
 
-- **Single-call routing (lower latency).** The original controller made two sequential LLM calls per turn — a Guard call, then a Classification call — before the chosen agent ran (up to three round-trips). I collapsed guard + classification into **one** `RouterAgent` call that returns both the allow/block decision and the target agent, removing a full LLM round-trip from every turn.
-- **Token-capped routing.** `get_chatbot_response` now takes a `max_tokens` argument; the router asks for a small budget (routing only needs a short JSON reply) instead of the default 2000, trimming routing latency further.
-- The standalone Guard and Classification agents are kept in the codebase for reference; the controller now uses the merged router.
+The chatbot only ran behind a self-hosted Llama-3.1-8B deployment on RunPod — real GPU cost, deployment fiddliness, and a genuine barrier to anyone (a recruiter, an interviewer, or a fresh contributor) actually trying it. OpenAI, Google Gemini, and DeepSeek are all reachable through the *identical* `openai` SDK client shape this codebase already used — switching providers is a config change, confirmed by direct testing of each compat endpoint.
 
-_Latency before/after: [to fill from my own runs — not yet measured]._
+- **`llm_client.py`** — provider-agnostic client (`LLM_PROVIDER=openai|gemini|deepseek`, or the original `runpod` default — existing `.env` files keep working unchanged). One config abstraction, not per-provider branches.
+- **`structured_output.py`** — migrated `RouterAgent` (the highest-frequency call — it runs on *every* turn) from "prompt the model to output JSON, then `json.loads()` it and hope" to real schema-guaranteed structured output (`response_format={"type":"json_schema",...}`) on providers that support it (OpenAI, Gemini), with a validated fallback for providers that don't (DeepSeek's compat layer is JSON-mode-only, not schema-guaranteed, per their docs). Scoped to the router only this round — the other agents' prompts use idiosyncratic keys (`"step number"`, `"chain of thought"`) and migrating them without a live endpoint to test against risked a regression I couldn't verify; documented as a natural next step.
+- **`response_cache.py`** — repeated identical questions to `DetailsAgent` ("what are your hours") skip the embedding call, the Pinecone query, and the chat completion entirely.
+- **`eval_harness.py` + `eval_dataset.py`** — ~35 hand-labeled routing examples, run against whichever provider is configured, reporting accuracy, latency, and an estimated $ cost per provider — the actual "which cheap provider is worth using" answer, not just "does routing work."
+- **`AgentController` dependency injection** — `router_agent`/`agent_dict` can be injected directly, so the dispatch logic is testable without live credentials or network access.
+- **Startup config validation** — `llm_client.validate_startup_config()` checks every required env var up front and lists everything missing in one clear message, instead of a confusing crash deep inside the OpenAI/Pinecone SDK on whichever call happens to run first.
+- **`python_code/finetuning/`** — an authored (not executed — no GPU here) QLoRA fine-tuning pipeline for the router, adapted from Unsloth's official Llama-3.1-8B recipe. The data-generation script *is* runnable and verified (242 labeled examples, zero external deps); the training notebook is ready to run on a free Colab T4.
+
+**Verification — the actually-important part:** `llm_client.py`, `structured_output.py`, `response_cache.py`, `eval_harness.py`, and `AgentController`'s dispatch logic are covered by a real, executed test suite (38 tests, `python3 -m unittest discover -s python_code/api/tests -t python_code/api`, all passing — see below). The tests use dependency-injected fakes (`tests/fakes.py` duck-types the OpenAI SDK client shape), since I don't currently have a funded API key to call a real model. Everything here is built and structurally verified; real accuracy/latency/cost numbers against an actual model still need a live key to confirm.
+
+Also fixed along the way: a real bug in `AgentController.get_response`'s fallback dispatch — `dict.get(key, default)` evaluates `default` eagerly even when `key` is present, so `self.agent_dict.get(chosen_agent, self.agent_dict["details_agent"])` required `"details_agent"` to always exist even for a perfectly valid, present `chosen_agent`. Found by writing a dispatch test with a minimal `agent_dict`, not by inspection.
+
+## 🧪 Tests
+
+Runs with **zero pip installs** — this network blocks PyPI entirely, so tests use dependency-injected fakes and Python's stdlib `unittest` rather than requiring `openai`/`pytest` to be installed:
+```
+python3 -m unittest discover -s python_code/api/tests -t python_code/api
+```
 
 ---
 

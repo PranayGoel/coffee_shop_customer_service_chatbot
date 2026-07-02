@@ -1,22 +1,20 @@
-from dotenv import load_dotenv
 import os
 from .utils import get_chatbot_response,get_embedding
-from openai import OpenAI
+import llm_client
+from response_cache import cache_by_last_message
 from copy import deepcopy
-from pinecone import Pinecone
-load_dotenv()
 
 class DetailsAgent():
-    def __init__(self):
-        self.client = OpenAI(
-            api_key=os.getenv("RUNPOD_TOKEN"),
-            base_url=os.getenv("RUNPOD_CHATBOT_URL"),
-        )
-        self.embedding_client = OpenAI(
-            api_key=os.getenv("RUNPOD_TOKEN"), 
-            base_url=os.getenv("RUNPOD_EMBEDDING_URL")
-        )
-        self.model_name = os.getenv("MODEL_NAME")
+    def __init__(self, provider=None):
+        # dotenv/pinecone are only imported when an agent is actually constructed,
+        # not at module import time -- keeps this module importable without either
+        # package installed.
+        from dotenv import load_dotenv
+        load_dotenv()
+        from pinecone import Pinecone
+        self.client, config = llm_client.get_client(provider=provider)
+        self.embedding_client = llm_client.get_embedding_client(provider=provider)
+        self.model_name = config["model"]
         self.pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
         self.index_name = os.getenv("PINECONE_INDEX_NAME")
     
@@ -33,7 +31,12 @@ class DetailsAgent():
 
         return results
 
+    @cache_by_last_message
     def get_response(self,messages):
+        # Repeated identical questions ("what are your hours") skip the embedding
+        # call, the Pinecone query, and the chat completion entirely -- see
+        # response_cache.py. DetailsAgent is stateless Q&A, so caching on the last
+        # message alone is safe (unlike OrderTakingAgent, which reads prior turns).
         messages = deepcopy(messages)
 
         user_message = messages[-1]['content']

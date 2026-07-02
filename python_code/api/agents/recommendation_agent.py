@@ -1,20 +1,19 @@
 import json
-import pandas as pd
-import os
 from .utils import get_chatbot_response
-from openai import OpenAI
+import llm_client
 from copy import deepcopy
-from dotenv import load_dotenv
-load_dotenv()
 
 
 class RecommendationAgent():
-    def __init__(self,apriori_recommendation_path,popular_recommendation_path):
-        self.client = OpenAI(
-            api_key=os.getenv("RUNPOD_TOKEN"),
-            base_url=os.getenv("RUNPOD_CHATBOT_URL"),
-        )
-        self.model_name = os.getenv("MODEL_NAME")
+    def __init__(self, apriori_recommendation_path, popular_recommendation_path, provider=None):
+        # dotenv/pandas are only imported when an agent is actually constructed,
+        # not at module import time -- keeps this module importable without either
+        # package installed.
+        from dotenv import load_dotenv
+        load_dotenv()
+        import pandas as pd
+        self.client, config = llm_client.get_client(provider=provider)
+        self.model_name = config["model"]
 
         with open(apriori_recommendation_path, 'r') as file:
             self.apriori_recommendations = json.load(file)
