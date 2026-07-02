@@ -1,5 +1,4 @@
-from agents import (GuardAgent,
-                    ClassificationAgent,
+from agents import (RouterAgent,
                     DetailsAgent,
                     OrderTakingAgent,
                     RecommendationAgent,
@@ -8,34 +7,32 @@ from agents import (GuardAgent,
 
 class AgentController():
     def __init__(self):
-        self.guard_agent = GuardAgent()
-        self.classification_agent = ClassificationAgent()
+        # Single routing agent replaces the sequential guard + classification calls.
+        self.router_agent = RouterAgent()
         self.recommendation_agent = RecommendationAgent('recommendation_objects/apriori_recommendations.json',
                                                         'recommendation_objects/popularity_recommendation.csv'
                                                         )
-        
+
         self.agent_dict: dict[str, AgentProtocol] = {
             "details_agent": DetailsAgent(),
             "order_taking_agent": OrderTakingAgent(self.recommendation_agent),
             "recommendation_agent": self.recommendation_agent
         }
-    
+
     def get_response(self,input):
         # Extract User Input
         job_input = input["input"]
         messages = job_input["messages"]
 
-        # Get GuardAgent's response
-        guard_agent_response = self.guard_agent.get_response(messages)
-        if guard_agent_response["memory"]["guard_decision"] == "not allowed":
-            return guard_agent_response
-        
-        # Get ClassificationAgent's response
-        classification_agent_response = self.classification_agent.get_response(messages)
-        chosen_agent=classification_agent_response["memory"]["classification_decision"]
+        # One LLM call handles both the guard decision and agent routing.
+        router_response = self.router_agent.get_response(messages)
+        if router_response["memory"]["guard_decision"] == "not allowed":
+            return router_response
 
-        # Get the chosen agent's response
-        agent = self.agent_dict[chosen_agent]
+        chosen_agent = router_response["memory"]["classification_decision"]
+
+        # Fall back to the details agent if routing returns an unexpected category.
+        agent = self.agent_dict.get(chosen_agent, self.agent_dict["details_agent"])
         response = agent.get_response(messages)
 
         return response
