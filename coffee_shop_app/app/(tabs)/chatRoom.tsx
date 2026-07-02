@@ -21,38 +21,46 @@ const ChatRoom = () => {
   useEffect(() => {
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    let message = textRef.current.trim();
-    if (!message) return;
+  // Sends the given conversation to the bot and appends its reply. Extracted so a
+  // failed request can be retried with the same input from the error dialog.
+  const requestBotReply = async (inputMessages: MessageInterface[]) => {
+    setIsTyping(true)
     try {
-
-        // Add the user message to the list of messages
-        let InputMessages = [...messages, { content:message, role: 'user' }];
-
-        setMessages(InputMessages);
-        textRef.current = ''
-        if(inputRef) inputRef?.current?.clear();
-        setIsTyping(true)
-        let resposnseMessage = await callChatBotAPI(InputMessages);
+        const responseMessage = await callChatBotAPI(inputMessages);
         setIsTyping(false)
-        setMessages(prevMessages => [...prevMessages, resposnseMessage]);
-        
-        if (resposnseMessage) {
-            if (resposnseMessage.memory ) {
-                if (resposnseMessage.memory.order) {
-                    emptyCart()
-                    resposnseMessage.memory.order.forEach((item: any) => {
-                    addToCart(item.item, item.quantity)
-                    });
-                }
-            }
+        setMessages(prevMessages => [...prevMessages, responseMessage]);
+
+        if (responseMessage?.memory?.order) {
+            emptyCart()
+            responseMessage.memory.order.forEach((item: any) => {
+                addToCart(item.item, item.quantity)
+            });
         }
-        
-
-    } catch(err:any ) {
-        Alert.alert('Message', err.message)
+    } catch (err: any) {
+        // Always clear the typing indicator (previously it stayed spinning on error).
+        setIsTyping(false)
+        Alert.alert(
+            'Connection problem',
+            "Sorry — I couldn't reach the assistant. Please try again.",
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Retry', onPress: () => requestBotReply(inputMessages) },
+            ]
+        )
     }
+  }
 
+  const handleSendMessage = async () => {
+    const message = textRef.current.trim();
+    if (!message) return;
+
+    // Add the user message to the list of messages
+    const inputMessages: MessageInterface[] = [...messages, { content: message, role: 'user' }];
+    setMessages(inputMessages);
+    textRef.current = ''
+    if (inputRef) inputRef?.current?.clear();
+
+    await requestBotReply(inputMessages);
   }
 
   return (
