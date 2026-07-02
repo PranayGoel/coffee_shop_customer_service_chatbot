@@ -1,5 +1,15 @@
 # Coffee Shop Raact Native Expo app 👋
 
+> **Fork note:** Forked from [abdullahtarek/coffee_shop_customer_service_chatbot](https://github.com/abdullahtarek/coffee_shop_customer_service_chatbot) (original app + design by **Abdullah Tarek**). Backend changes are in the [top-level README](../README.md); frontend changes are summarized below.
+
+## 🛠️ What I changed (frontend)
+
+- **Resilient chatbot calls** (`services/chatBot.ts`) — added a request timeout, retry-with-backoff for transient/5xx/network failures (client 4xx errors are not retried), and a check for malformed responses. Only the last few turns are sent instead of the entire history, which reduces payload size and backend work.
+- **Fixed a stuck typing indicator** (`app/(tabs)/chatRoom.tsx`) — on a failed request the "typing…" spinner previously never cleared; it now resets on error.
+- **Friendlier error handling with retry** — replaced the raw error `Alert` with a clear "Connection problem" dialog that offers a **Retry** action re-sending the same message.
+
+---
+
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started
