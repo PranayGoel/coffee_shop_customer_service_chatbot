@@ -1,6 +1,18 @@
 
 # Coffee Shop Customer Service Chatbot 🚀☕️
 
+> **Fork note:** This is a fork of [abdullahtarek/coffee_shop_customer_service_chatbot](https://github.com/abdullahtarek/coffee_shop_customer_service_chatbot). The original multi-agent chatbot, tutorial, and app design are by **Abdullah Tarek** — full credit for the baseline. My changes are summarized below (backend) and in [`coffee_shop_app/README.md`](./coffee_shop_app/README.md) (frontend); the original documentation follows unchanged.
+
+## 🛠️ What I changed (backend)
+
+- **Single-call routing (lower latency).** The original controller made two sequential LLM calls per turn — a Guard call, then a Classification call — before the chosen agent ran (up to three round-trips). I collapsed guard + classification into **one** `RouterAgent` call that returns both the allow/block decision and the target agent, removing a full LLM round-trip from every turn.
+- **Token-capped routing.** `get_chatbot_response` now takes a `max_tokens` argument; the router asks for a small budget (routing only needs a short JSON reply) instead of the default 2000, trimming routing latency further.
+- The standalone Guard and Classification agents are kept in the codebase for reference; the controller now uses the merged router.
+
+_Latency before/after: [to fill from my own runs — not yet measured]._
+
+---
+
 Welcome to the Coffee Shop Customer Service Chatbot project! This repository contains the code, resources, and instructions to build an AI-powered chatbot designed to enhance customer experiences in a coffee shop app. Leveraging the power of LLMs (Large Language models), Natural Language Processing (NLP), and RunPod's infrastructure, this chatbot can assist with taking orders, answering detailed menu queries, and providing personalized product recommendations—all within a React Native mobile app.
 
 # 🎯 Project Overview
