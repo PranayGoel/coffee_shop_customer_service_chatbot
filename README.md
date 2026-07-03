@@ -19,6 +19,42 @@ The chatbot only ran behind a self-hosted Llama-3.1-8B deployment on RunPod — 
 
 Also fixed along the way: a real bug in `AgentController.get_response`'s fallback dispatch — `dict.get(key, default)` evaluates `default` eagerly even when `key` is present, so `self.agent_dict.get(chosen_agent, self.agent_dict["details_agent"])` required `"details_agent"` to always exist even for a perfectly valid, present `chosen_agent`. Found by writing a dispatch test with a minimal `agent_dict`, not by inspection.
 
+## 🚀 Quickstart: trying the chatbot without a GPU
+
+The full app (React Native front-end, Pinecone vector DB, Firebase product data) is unchanged — see [Getting Started](#-getting-started) further down for that. This section covers just the new provider-agnostic backend, which is what actually removes the GPU requirement.
+
+**1. Get a free API key.** [OpenRouter](https://openrouter.ai/keys) — sign up, no card required, create a key. (Or bring your own OpenAI/Gemini/DeepSeek key — see `llm_client.py`'s `PROVIDER_CONFIG`.)
+
+**2. Install the backend dependencies:**
+```bash
+cd python_code/api
+pip install -r requirements.txt
+```
+
+**3. Set environment variables** (copy `.env_example` to `.env`, or export directly):
+```bash
+export LLM_PROVIDER=openrouter
+export LLM_API_KEY=sk-or-...        # your OpenRouter key
+```
+
+**4. Try the router + order-taking + recommendation agents end-to-end** — these only need the LLM key above, no Pinecone:
+```python
+from agent_controller import AgentController
+
+controller = AgentController(provider="openrouter")
+response = controller.get_response({"input": {"messages": [{"role": "user", "content": "I'd like a large latte"}]}})
+print(response)
+```
+
+**5. Run the multi-provider eval harness** for real accuracy/latency/cost numbers against whichever provider you configured:
+```bash
+python eval_harness.py
+```
+
+**Note on `DetailsAgent`**: menu/ingredient Q&A additionally needs a populated Pinecone index (`PINECONE_API_KEY`, `PINECONE_INDEX_NAME`), built once via `build_vector_database.ipynb` in `python_code/` — unchanged from the original setup, see [Getting Started](#-getting-started). Everything else above works with just the LLM key.
+
+No API key yet? `llm_client.py`, `structured_output.py`, `response_cache.py`, `eval_harness.py`, and `AgentController`'s dispatch logic are all covered by a real test suite run against a fake client (see Tests below) — read it to see exactly what each piece does at zero cost.
+
 ## 🧪 Tests
 
 Runs with **zero pip installs** — this network blocks PyPI entirely, so tests use dependency-injected fakes and Python's stdlib `unittest` rather than requiring `openai`/`pytest` to be installed:
