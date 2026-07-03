@@ -31,13 +31,15 @@ cd python_code/api
 pip install -r requirements.txt
 ```
 
-**3. Set environment variables** (copy `.env_example` to `.env`, or export directly):
+**3. Set environment variables** (copy `.env_example` to `.env`, or export directly). `AgentController` constructs every agent up front — including `DetailsAgent`, which passes `PINECONE_API_KEY` straight into the Pinecone client — so a Pinecone API key needs to exist even if you're only trying the router/order/recommendation path below; a free Pinecone project takes about a minute to create:
 ```bash
 export LLM_PROVIDER=openrouter
 export LLM_API_KEY=sk-or-...        # your OpenRouter key
+export PINECONE_API_KEY=...         # needed for AgentController to construct at all
+export PINECONE_INDEX_NAME=...
 ```
 
-**4. Try the router + order-taking + recommendation agents end-to-end** — these only need the LLM key above, no Pinecone:
+**4. Try the router + order-taking + recommendation agents end-to-end:**
 ```python
 from agent_controller import AgentController
 
@@ -51,7 +53,7 @@ print(response)
 python eval_harness.py
 ```
 
-**Note on `DetailsAgent`**: menu/ingredient Q&A additionally needs a populated Pinecone index (`PINECONE_API_KEY`, `PINECONE_INDEX_NAME`), built once via `build_vector_database.ipynb` in `python_code/` — unchanged from the original setup, see [Getting Started](#-getting-started). Everything else above works with just the LLM key.
+**Note on `DetailsAgent`**: menu/ingredient Q&A needs the Pinecone index to actually be populated, built once via `build_vector_database.ipynb` in `python_code/` — unchanged from the original setup, see [Getting Started](#-getting-started). The router/order/recommendation replies above only depend on the LLM key to generate a response; the Pinecone credentials just need to exist for construction to succeed.
 
 No API key yet? `llm_client.py`, `structured_output.py`, `response_cache.py`, `eval_harness.py`, and `AgentController`'s dispatch logic are all covered by a real test suite run against a fake client (see Tests below) — read it to see exactly what each piece does at zero cost.
 
