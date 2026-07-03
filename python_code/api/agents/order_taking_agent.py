@@ -1,19 +1,17 @@
-import os
 import json
 from .utils import get_chatbot_response,double_check_json_output
-from openai import OpenAI
+import llm_client
 from copy import deepcopy
-from dotenv import load_dotenv
-load_dotenv()
 
 
 class OrderTakingAgent():
-    def __init__(self, recommendation_agent):
-        self.client = OpenAI(
-            api_key=os.getenv("RUNPOD_TOKEN"),
-            base_url=os.getenv("RUNPOD_CHATBOT_URL"),
-        )
-        self.model_name = os.getenv("MODEL_NAME")
+    def __init__(self, recommendation_agent, provider=None):
+        # dotenv is only imported when an agent is actually constructed, not at
+        # module import time -- keeps this module importable without the package.
+        from dotenv import load_dotenv
+        load_dotenv()
+        self.client, config = llm_client.get_client(provider=provider)
+        self.model_name = config["model"]
 
         self.recommendation_agent = recommendation_agent
     
