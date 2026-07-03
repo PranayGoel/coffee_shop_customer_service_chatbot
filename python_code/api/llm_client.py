@@ -4,9 +4,10 @@ Provider-agnostic LLM client.
 The problem this solves: the chatbot only ran behind a self-hosted Llama-3.1-8B
 deployment on RunPod -- real GPU cost, deployment fiddliness, and a genuine barrier
 to anyone (a recruiter, an interviewer, or a fresh contributor) actually trying it.
-OpenAI, Google Gemini, and DeepSeek are all reachable through the *exact same*
-`OpenAI(api_key=..., base_url=...)` SDK client shape this codebase already uses --
-switching providers is a config change, not a rewrite.
+OpenAI, Google Gemini, DeepSeek, and OpenRouter are all reachable through the
+*exact same* `OpenAI(api_key=..., base_url=...)` SDK client shape this codebase
+already uses -- switching providers is a config change, not a rewrite. OpenRouter
+is the recommended option for trying this at zero cost -- see PROVIDER_CONFIG below.
 
 Backward compatibility: the original deployment used RUNPOD_TOKEN/RUNPOD_CHATBOT_URL/
 MODEL_NAME/RUNPOD_EMBEDDING_URL env vars directly in each agent's __init__. The
@@ -58,6 +59,18 @@ PROVIDER_CONFIG = {
         # DeepSeek's compat layer is JSON-mode-only per their docs at research time --
         # no confirmed json_schema/strict guarantee.
         "supports_strict_json_schema": False,
+    },
+    "openrouter": {
+        "base_url": "https://openrouter.ai/api/v1",
+        # openai/gpt-oss-20b:free was confirmed via a live query of OpenRouter's own
+        # /api/v1/models endpoint (not just docs prose) to expose BOTH
+        # response_format/structured_outputs AND tools/tool_choice on the free tier --
+        # the genuinely-free option with the least uncertainty for this codebase,
+        # unlike Gemini's compat layer (documented "beta", with a confirmed bug on
+        # the 2.0 model series specifically) or Groq (whose docs explicitly disallow
+        # combining strict JSON schema with tool calling in one request).
+        "default_model": "openai/gpt-oss-20b:free",
+        "supports_strict_json_schema": True,
     },
 }
 

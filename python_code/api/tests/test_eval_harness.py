@@ -67,6 +67,9 @@ class TestEstimateCost(unittest.TestCase):
     def test_unknown_provider_defaults_to_zero_rather_than_crashing(self):
         self.assertEqual(estimate_cost(100, "not-a-real-provider"), 0.0)
 
+    def test_openrouter_free_tier_is_zero_cost(self):
+        self.assertEqual(estimate_cost(1000, "openrouter"), 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -26,6 +26,7 @@ PRICE_PER_1M_TOKENS = {
     "gemini": (0.10, 0.40),      # Flash-Lite-class
     "deepseek": (0.14, 0.28),    # deepseek-chat, cache-miss pricing
     "runpod": (0.0, 0.0),        # self-hosted -- billed as GPU-hours, not per-token
+    "openrouter": (0.0, 0.0),    # openai/gpt-oss-20b:free -- genuinely free tier
 }
 
 # Rough per-call token estimate for this workload (short system prompt + a few
